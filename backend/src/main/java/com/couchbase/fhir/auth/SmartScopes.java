@@ -1,5 +1,8 @@
 package com.couchbase.fhir.auth;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,6 +27,8 @@ import java.util.List;
  * - Or * for all interactions
  */
 public class SmartScopes {
+    
+    private static final Logger logger = LoggerFactory.getLogger(SmartScopes.class);
     
     // Launch contexts
     public static final String LAUNCH = "launch";
@@ -159,24 +164,69 @@ public class SmartScopes {
         }
         
         public boolean allowsRead() {
-            return "read".equals(action) || "*".equals(action);
+            // SMART v2 granular scopes: check if action contains 'r' (read) or 's' (search)
+            // Examples: "read", "rs", "cruds", "*"
+            return "read".equals(action) || 
+                   "*".equals(action) || 
+                   (action != null && (action.contains("r") || action.contains("s")));
         }
         
         public boolean allowsWrite() {
-            return "write".equals(action) || "*".equals(action);
+            // SMART v2 granular scopes: check if action contains 'c', 'u', or 'd'
+            // Examples: "write", "cud", "cruds", "*"
+            return "write".equals(action) || 
+                   "*".equals(action) || 
+                   (action != null && (action.contains("c") || action.contains("u") || action.contains("d")));
         }
         
         public boolean matches(String requestedResourceType, String requestedAction) {
-            // Check resource type match
+            // Check resource type match (must match explicitly or be wildcard)
             boolean resourceMatches = isWildcardResource() || 
                                      resourceType.equals(requestedResourceType);
             
-            // Check action match
-            boolean actionMatches = isWildcardAction() ||
-                                   action.equals(requestedAction) ||
-                                   ("*".equals(requestedAction) && (allowsRead() || allowsWrite()));
+            logger.trace("[SCOPE-MATCH] Checking scope '{}' against resource={}, action={} - resourceMatches={}", 
+                        originalScope, requestedResourceType, requestedAction, resourceMatches);
             
-            return resourceMatches && actionMatches;
+            if (!resourceMatches) {
+                logger.trace("[SCOPE-MATCH] ❌ Resource mismatch: scope resource '{}' != requested '{}'", 
+                           resourceType, requestedResourceType);
+                return false; // If resource doesn't match, deny immediately
+            }
+            
+            // Check action match
+            if (isWildcardAction()) {
+                logger.trace("[SCOPE-MATCH] ✅ Wildcard action '*' grants all permissions");
+                return true; // Wildcard action grants all permissions
+            }
+            
+            // SMART v2 granular action matching
+            boolean matches = false;
+            if ("read".equals(requestedAction)) {
+                matches = allowsRead();
+                logger.trace("[SCOPE-MATCH] Read permission check: scope action='{}', allowsRead={}", action, matches);
+            } else if ("write".equals(requestedAction)) {
+                matches = allowsWrite();
+                logger.trace("[SCOPE-MATCH] Write permission check: scope action='{}', allowsWrite={}", action, matches);
+            } else if ("*".equals(requestedAction)) {
+                matches = allowsRead() || allowsWrite();
+                logger.trace("[SCOPE-MATCH] Wildcard permission check: scope action='{}', allowsRead={}, allowsWrite={}", 
+                           action, allowsRead(), allowsWrite());
+            } else {
+                // Exact match for other actions
+                matches = action.equals(requestedAction);
+                logger.trace("[SCOPE-MATCH] Exact match check: scope action='{}', requested='{}', matches={}", 
+                           action, requestedAction, matches);
+            }
+            
+            if (matches) {
+                logger.debug("[SCOPE-MATCH] ✅ GRANTED: Scope '{}' allows {}.{}", 
+                           originalScope, requestedResourceType, requestedAction);
+            } else {
+                logger.trace("[SCOPE-MATCH] ❌ DENIED: Scope '{}' does not allow {}.{}", 
+                           originalScope, requestedResourceType, requestedAction);
+            }
+            
+            return matches;
         }
         
         @Override

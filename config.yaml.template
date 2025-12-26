@@ -33,7 +33,16 @@ couchbase:
   sdk:
     overrides: {}
     # overrides. Complete list of available overrides in docs. Example below.
+  	# Do not change unless you know what you are doing
+    # transaction-durability: MAJORITY # NONE, MAJORITY, MAJORITY_AND_PERSIST_TO_ACTIVE, PERSIST_TO_MAJORITY
     # max-http-connections: 12 # Max HTTP Connections
+    # num-kv-connections: 1 # Max KV Connections
+    # kv-timeout-seconds: 30 # KV Timeout
+    # query-timeout-seconds: 30 # Query Timeout
+    # search-timeout-seconds: 30 # Search Timeout
+    # connect-timeout-seconds: 10 # Connect Timeout
+    # disconnect-timeout-seconds: 10 # Disconnect Timeout
+    # transaction-timeout-seconds: 30 # Transaction Timeout
 
 admin:
   email: "admin@example.com"
@@ -52,7 +61,13 @@ deploy:
   environment:
     overrides: {}
     # overrides. Complete list of available overrides in docs. Example below.
-    # SERVER_TOMCAT_THREADS_MAX: 200
+  	# Do not change unless you know what you are doing
+    # SERVER_TOMCAT_THREADS_MAX: 200 # Max threads
+    # SERVER_TOMCAT_THREADS_MIN_SPARE: 10 # Minimum idle threads
+    # SERVER_TOMCAT_ACCEPT_COUNT: 100 # Queue size when all threads busy
+    # SERVER_TOMCAT_MAX_CONNECTIONS: 10000 # Max simultaneous connections
+    # SERVER_TOMCAT_CONNECTION_TIMEOUT: 20s # Connection timeout
+    # SERVER_TOMCAT_MAX_KEEP_ALIVE_REQUESTS: 1000 # Keep-alive requests per connection
 
   tls:
     enabled: false
