@@ -3,25 +3,13 @@ spring:
     name: backend
   config:
     import: classpath:fhir.yml
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: http://keycloak:8080/auth/realms/fhir/protocol/openid-connect/certs
-  # Enable Virtual Threads (Java 21+)
-  # Eliminates thread pool exhaustion under high concurrency (1000+ concurrent users)
-  # Virtual threads are lightweight and yield during I/O operations (Couchbase queries, JSON parsing)
-  threads:
-    virtual:
-      enabled: true
-
-# OAuth2 Authorization Server Configuration
-# Default value for local development
-# Production deployments should set this in config.yaml (takes precedence at runtime)
+  
 app:
-  baseUrl: ${APP_BASE_URL:http://localhost}
+  baseUrl: ${APP_BASE_URL:http://localhost:8080/fhir}
+
   security:
-    use-keycloak: true
+    use-keycloak: false
+
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
   allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
@@ -64,12 +52,6 @@ server:
   tomcat:
     accesslog:
       enabled: false
-    # With virtual threads enabled, Tomcat thread pool sizing becomes less critical
-    # Virtual threads handle concurrency efficiently without traditional thread pool limits
-    # Legacy note: Set environment variables (SERVER_TOMCAT_THREADS_MAX, etc.) to override if needed
-    # Spring Boot defaults: 200 max threads, 10 min-spare, 100 accept-count, 10000 max-connections
-
-# Logging configuration for containers
 logging:
   level:
     '[ca.uhn.fhir.rest.server.RestfulServer]': false
@@ -80,5 +62,4 @@ logging:
     '[org.springframework.web.servlet]': ERROR
     '[com.couchbase.transactions]': ERROR
   pattern:
-    console: "%d{HH:mm:ss.SSS} %-5level %logger{20} - %msg%n"
-# The resource values above will be resolved from environment variables at runtime (docker-compose/.env)
+    console: '%d{HH:mm:ss.SSS} %-5level %logger{20} - %msg%n'

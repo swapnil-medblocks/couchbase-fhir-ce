@@ -31,6 +31,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+
+import com.couchbase.admin.tokens.service.JwtTokenCacheService;
 
 /**
  * REST controller for Admin UI authentication
@@ -59,6 +62,9 @@ public class AuthController {
     
     @Autowired
     private InitializationService initializationService;
+
+    @Autowired
+    private JwtTokenCacheService jwtTokenCacheService;
 
     @Value("${app.security.use-keycloak:false}")
     private boolean useKeycloak;
@@ -368,16 +374,28 @@ public class AuthController {
             long hours = Long.parseLong(System.getProperty("oauth.token.expiry.hours",
                     System.getenv().getOrDefault("OAUTH_TOKEN_EXPIRY_HOURS", "24")));
             java.time.Instant exp = now.plus(java.time.Duration.ofHours(hours));
+            String jti = UUID.randomUUID().toString();
             JwtClaimsSet claims = JwtClaimsSet.builder()
                     .subject(email)
                     .issuedAt(now)
                     .expiresAt(exp)
-                    .id(java.util.UUID.randomUUID().toString())  // Add JTI for revocation tracking
+                    .id(jti)  // Add JTI for revocation tracking
                     .claim("token_type", "admin")  // Explicit token type (hardening)
                     .claim("scope", String.join(" ", scopes))
                     .claim("email", email)
                     .build();
-            return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+
+            String token = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+
+            try {
+                if (jwtTokenCacheService != null) {
+                    jwtTokenCacheService.addToken(jti);
+                }
+            } catch (Exception e) {
+                logger.warn("⚠️ [LOGIN] Failed to add JTI to JwtTokenCacheService: {}", e.getMessage());
+            }
+
+            return token;
         } catch (Exception e) {
             logger.error("❌ Failed to issue admin access token: {}", e.getMessage());
             return null;

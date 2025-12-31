@@ -1,0 +1,59 @@
+services:
+  fhir-server:
+    image: ghcr.io/couchbaselabs/couchbase-fhir-ce/fhir-server:${FHIR_BACKEND_TAG:-latest}
+    user: ${FHIR_RUN_UID:-1000}:${FHIR_RUN_GID:-1000}
+    mem_limit: 3g
+    mem_reservation: 2g
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DEPLOYED_ENV: container
+      LOGGING_FILE_NAME: /app/logs/fhir.log
+      SDK_LOGGING_FILE_NAME: /app/logs/sdk.log
+      APP_BASE_URL: http://example.com/fhir
+      JAVA_TOOL_OPTIONS: -Xms1g -Xmx2g -Xss512k -XX:MaxDirectMemorySize=512m -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/logs/heap.hprof
+        -XX:+ExitOnOutOfMemoryError -Xlog:gc*:file=/app/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=10M
+    volumes:
+    - ./config.yaml:/config.yaml:ro
+    - ./logs:/app/logs
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl -f http://localhost:8080/actuator/health || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    expose:
+    - '8080'
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+        max-file: '3'
+    restart: unless-stopped
+  fhir-admin:
+    image: ghcr.io/couchbaselabs/couchbase-fhir-ce/fhir-admin:${FHIR_FRONTEND_TAG:-latest}
+    environment:
+      NGINX_ENTRYPOINT_QUIET_LOGS: 1
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '1'
+    depends_on:
+    - fhir-server
+    expose:
+    - '80'
+    restart: unless-stopped
+  haproxy:
+    image: haproxy:2.9-alpine
+    ports:
+    - 80:80
+    volumes:
+    - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+    - fhir-admin
+    - fhir-server
+    restart: unless-stopped
+volumes: {}
