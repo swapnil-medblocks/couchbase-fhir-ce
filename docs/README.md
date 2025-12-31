@@ -95,7 +95,7 @@ For detailed information about:
 
 ## SMART on FHIR and Keycloak
 
-SMART on FHIR support is included. You can use a third-party OIDC provider or optionally enable a Keycloak add-on we provide helper scripts for. The detailed guide lives at `docs/SMART_AND_KEYCLOAK.md` and covers:
+SMART on FHIR support is included. You can use a third-party OIDC provider or optionally enable a Keycloak add-on we provide helper scripts for. The detailed guide lives at [docs/SMART_AND_KEYCLOAK.md](SMART_AND_KEYCLOAK.md) and covers:
 
 - Which `config.yaml` settings control Keycloak/SMART behavior
 - How to enable Keycloak and write `.env` using `scripts/enable-keycloak.sh`
